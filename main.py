@@ -7,7 +7,7 @@ try:
     init(autoreset=True)
 except ImportError:
     class _SinColor:
-        GREEN = RED = YELLOW = CYAN = MAGENTA = RESET = ""
+        GREEN = RED = YELLOW = CYAN = MAGENTA = RESET = RESET_ALL = ""
     Fore = Style = _SinColor()
 
 NOMBRE_BD = "inventario.db"
@@ -31,6 +31,7 @@ def inicializar_bd():
     )
     """
     try:
+        # El bloque 'with' confirma los cambios automáticamente si no hay errores.
         with conectar_bd() as conexion:
             conexion.execute(sql)
     except sqlite3.Error as error:
@@ -63,6 +64,7 @@ def pedir_entero(mensaje, minimo=None):
 def pedir_flotante(mensaje, mayor_que_cero=False):
     """Solicita un número decimal válido (acepta coma o punto)."""
     while True:
+        # Reemplaza la coma por punto para aceptar decimales en formato local.
         entrada = input(mensaje).strip().replace(",", ".")
         try:
             numero = float(entrada)
@@ -105,6 +107,7 @@ def registrar_producto():
     precio = pedir_flotante("Precio: ", mayor_que_cero=True)
     categoria = input("Categoría (opcional): ").strip()
 
+    # Los marcadores '?' evitan la inyección SQL al pasar los datos como parámetros.
     sql = """
     INSERT INTO productos (nombre, descripcion, cantidad, precio, categoria)
     VALUES (?, ?, ?, ?, ?)
@@ -147,12 +150,14 @@ def buscar_productos():
                 ).fetchall()
             elif opcion == "2":
                 texto = pedir_texto_obligatorio("Ingresá el nombre o parte del nombre: ")
+                # Usar %texto% con LIKE permite buscar coincidencias parciales.
                 filas = conexion.execute(
                     "SELECT id, nombre, descripcion, cantidad, precio, categoria FROM productos WHERE nombre LIKE ?",
                     (f"%{texto}%",)
                 ).fetchall()
             elif opcion == "3":
                 texto = pedir_texto_obligatorio("Ingresá la categoría: ")
+                # Usar %texto% con LIKE permite buscar coincidencias parciales.
                 filas = conexion.execute(
                     "SELECT id, nombre, descripcion, cantidad, precio, categoria FROM productos WHERE categoria LIKE ?",
                     (f"%{texto}%",)
@@ -185,6 +190,7 @@ def actualizar_producto():
             _, nombre_act, desc_act, cant_act, precio_act, cat_act = actual
             print(f"Editando '{nombre_act}' (dejá vacío para mantener el valor actual):")
 
+            # Si el usuario deja el campo vacío, se conserva el valor actual del registro.
             nuevo_nombre = input(f"Nuevo nombre [{nombre_act}]: ").strip()
             nombre_final = nuevo_nombre if nuevo_nombre else nombre_act
 
@@ -222,6 +228,7 @@ def actualizar_producto():
             nueva_cat = input(f"Nueva categoría [{cat_act or 'Sin categoría'}]: ").strip()
             cat_final = nueva_cat if nueva_cat else cat_act
 
+            # Los marcadores '?' evitan la inyección SQL al pasar los valores como parámetros.
             sql = """
             UPDATE productos
             SET nombre = ?, descripcion = ?, cantidad = ?, precio = ?, categoria = ?
@@ -255,6 +262,7 @@ def eliminar_producto():
             ).strip().lower()
 
             if confirmacion == "s":
+                # El marcador '?' evita la inyección SQL en el borrado por ID.
                 conexion.execute("DELETE FROM productos WHERE id = ?", (prod_id,))
                 print(f"{Fore.GREEN}Producto '{nombre}' eliminado.")
             else:
